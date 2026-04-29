@@ -497,22 +497,38 @@ def generate_pdf(emp, summary, absent_days, report_type="شهري"):
 def page_home_dashboard():
     st.markdown('<div class="section-header">🏠 الشاشة الرئيسية - ملخص اليوم</div>', unsafe_allow_html=True)
     
-    c1, c2 = st.columns([1, 3])
+    c1, c2, c3 = st.columns([1.5, 1.5, 3])
     selected_date = c1.date_input("📅 اختر التاريخ", value=datetime.date.today())
-    st.write("")
-
+    
     # 1. جلب البيانات بتصفية الشركة
     user_c_id = st.session_state.user['company_id']
-    df_e = fetch("employees")
+    df_e_all = fetch("employees")
+    
+    if df_e_all.empty:
+        st.warning("⚠️ لا توجد بيانات موظفين مسجلة."); return
+
+    # إضافة فلتر الفرع
+    branches = ["الكل"] + sorted(df_e_all['branch'].dropna().unique().tolist())
+    sel_branch = c2.selectbox("🏢 اختر الفرع", branches)
+    
+    df_e = df_e_all.copy()
+    if sel_branch != "الكل":
+        df_e = df_e[df_e['branch'] == sel_branch]
+
     res = supabase.table("attendance_logs").select("*") \
         .eq("company_id", user_c_id) \
         .gte("timestamp", str(selected_date)) \
         .lte("timestamp", str(selected_date) + "T23:59:59") \
         .execute()
-    df_l = pd.DataFrame(res.data)
+    df_l_all = pd.DataFrame(res.data)
     
-    if df_e.empty:
-        st.warning("⚠️ لا توجد بيانات موظفين مسجلة."); return
+    if sel_branch != "الكل" and not df_l_all.empty:
+        emp_ids = df_e['device_id'].astype(str).tolist()
+        df_l = df_l_all[df_l_all['device_id'].astype(str).isin(emp_ids)].copy()
+    else:
+        df_l = df_l_all
+    
+    st.write("")
 
     # 2. الحسابات
     total_emp = len(df_e)
@@ -693,17 +709,25 @@ def page_summary():
     if branch_filter and user["role"] != "admin":
         df_e_all = df_e_all[df_e_all['branch'] == branch_filter]
 
-    # إنشاء قائمة الاختيارات: الاسم - #الكود
-    emp_options = {f"{e['name']} - #{e['device_id']}": str(e['device_id']) for _, e in df_e_all.iterrows()}
+    # إنشاء قائمة الاختيارات مع إمكانية الفلترة بالفرع
+    branches = ["الكل"] + sorted(df_e_all['branch'].dropna().unique().tolist())
     
     st.markdown("<h4 style='color: #1e3a5f; margin-bottom: 15px;'>🔍 معايير الاستعلام</h4>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1.5, 1, 1])
+    col_br, col_emp, col1, col2 = st.columns([1, 1.5, 0.8, 0.8])
     
-    selected_option = col1.selectbox("👤 ابحث عن الموظف:", options=[""] + list(emp_options.keys()), 
-                                     placeholder="اختر موظفاً أو ابحث بالاسم...")
+    sel_br_sum = col_br.selectbox("🏢 الفرع:", branches)
     
-    start_date = col2.date_input("📅 من تاريخ:", value=datetime.date.today().replace(day=1))
-    end_date   = col3.date_input("📅 إلى تاريخ:", value=datetime.date.today())
+    df_e_sum = df_e_all.copy()
+    if sel_br_sum != "الكل":
+        df_e_sum = df_e_sum[df_e_sum['branch'] == sel_br_sum]
+
+    emp_options = {f"{e['name']} - #{e['device_id']}": str(e['device_id']) for _, e in df_e_sum.iterrows()}
+    
+    selected_option = col_emp.selectbox("👤 ابحث عن الموظف:", options=[""] + list(emp_options.keys()), 
+                                     placeholder="اختر موظفاً...")
+    
+    start_date = col1.date_input("📅 من:", value=datetime.date.today().replace(day=1))
+    end_date   = col2.date_input("📅 إلى:", value=datetime.date.today())
 
     st.markdown("<hr style='border: 1px solid #e2e8f0; margin-top: 5px; margin-bottom: 25px;'>", unsafe_allow_html=True)
 
