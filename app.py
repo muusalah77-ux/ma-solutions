@@ -691,60 +691,221 @@ def page_manage_leaves():
             st.error(f"خطأ في تحميل البيانات: {ex}")
 
 # ══════════════════════════════════════════
-# صفحة: ملخص الموظف + تقرير PDF
+# صفحة: ملخص الموظف + تقرير PDF  (Dark Dashboard Style)
 # ══════════════════════════════════════════
 def page_summary():
     if not can("summary"): denied(); return
- 
-    st.markdown('<div class="section-header">📄 ملخص وتقرير الموظف</div>', unsafe_allow_html=True)
+
+    # ── CSS خاص بهذه الصفحة فقط ──────────────────────────────────────────
+    st.markdown("""
+    <style>
+    /* ── Dark wrapper ── */
+    .sum-wrap {
+        background: #0d1117;
+        border-radius: 16px;
+        padding: 24px;
+        direction: rtl;
+        font-family: 'Cairo', sans-serif;
+    }
+    /* ── Filter bar ── */
+    .sum-filter-bar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 18px;
+        padding: 14px 18px;
+        background: #161b22;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+    }
+    .sum-filter-label {
+        color: #8b949e;
+        font-size: 12px;
+        font-weight: 700;
+        margin-left: 4px;
+    }
+    /* ── Employee hero card ── */
+    .sum-emp-hero {
+        background: linear-gradient(135deg, #0f3460 0%, #1a1f6e 100%);
+        border-radius: 14px;
+        padding: 18px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+    .sum-emp-left { display: flex; align-items: center; gap: 16px; }
+    .sum-avatar {
+        width: 58px; height: 58px;
+        border-radius: 50%;
+        background: #00d4aa;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; font-weight: 900; color: #0d1117;
+        flex-shrink: 0;
+    }
+    .sum-emp-name { color: white; font-size: 20px; font-weight: 900; }
+    .sum-emp-meta { color: #bfdbfe; font-size: 12px; margin-top: 4px; }
+    .sum-badge-row { display: flex; gap: 7px; margin-top: 8px; flex-wrap: wrap; }
+    .sum-badge {
+        border-radius: 20px; padding: 3px 12px;
+        font-size: 11px; font-weight: 700;
+    }
+    .sum-badge-green { background: rgba(0,212,170,0.15); color: #00d4aa; }
+    .sum-badge-blue  { background: rgba(0,153,255,0.12); color: #0099ff; }
+    .sum-emp-right { display: flex; gap: 10px; flex-wrap: wrap; }
+    .sum-stat-box {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 8px 16px;
+        text-align: center;
+        min-width: 80px;
+    }
+    .sum-stat-box small { display: block; color: #bfdbfe; font-size: 10px; font-weight: 700; margin-bottom: 2px; }
+    .sum-stat-box span  { color: white; font-size: 16px; font-weight: 900; }
+    /* ── KPI grid ── */
+    .sum-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+    }
+    .sum-kpi {
+        background: #1c2333;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        padding: 14px 10px;
+        text-align: center;
+    }
+    .sum-kpi-val { font-size: 26px; font-weight: 900; line-height: 1.1; }
+    .sum-kpi-lbl { color: #8b949e; font-size: 11px; font-weight: 700; margin-top: 5px; }
+    /* ── Attendance strip ── */
+    .sum-strip-wrap {
+        background: #161b22;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+    .sum-strip-title { color: #8b949e; font-size: 11px; font-weight: 700;
+                       text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+    .sum-strip-legend { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+    .sum-sl-item { display: flex; align-items: center; gap: 5px;
+                   font-size: 11px; color: #8b949e; font-weight: 600; }
+    .sum-sl-box  { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .sum-strip   { display: flex; gap: 4px; flex-wrap: wrap; }
+    .sum-day-dot {
+        width: 16px; height: 16px; border-radius: 3px;
+        display: inline-block;
+        title: attr(data-tip);
+    }
+    /* ── Charts row ── */
+    .sum-charts-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    .sum-chart-card {
+        background: #161b22;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        padding: 16px;
+    }
+    .sum-chart-title {
+        color: #8b949e; font-size: 12px; font-weight: 700;
+        margin-bottom: 10px; text-align: center;
+    }
+    /* ── Section divider ── */
+    .sum-divider {
+        border: none; border-top: 1px solid rgba(255,255,255,0.07);
+        margin: 16px 0;
+    }
+    /* ── Tab export area ── */
+    .sum-export-card {
+        background: #161b22;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 12px;
+        padding: 20px;
+        color: #e6edf3;
+    }
+    /* ── Detail table override ── */
+    .sum-detail-tbl {
+        width: 100%; border-collapse: collapse;
+        font-size: 12px; color: #e6edf3;
+        font-family: 'Cairo', sans-serif;
+    }
+    .sum-detail-tbl th {
+        background: #21262d; color: #8b949e;
+        padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.07);
+        font-weight: 700; font-size: 11px;
+    }
+    .sum-detail-tbl td {
+        padding: 7px 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .sum-detail-tbl tr:hover td { background: rgba(255,255,255,0.03); }
+    </style>
+    """, unsafe_allow_html=True)
+
     user = st.session_state["user"]
 
-    # جلب بيانات الموظفين للاختيار منها
+    # ── جلب بيانات الموظفين ───────────────────────────────────────────────
     df_e_all = fetch("employees")
     if df_e_all.empty:
         st.warning("⚠️ قاعدة بيانات الموظفين فارغة."); return
 
-    # تصفية الموظفين حسب الفرع إذا لزم الأمر
     branch_filter = user.get("branch_filter")
     if branch_filter and user["role"] != "admin":
         df_e_all = df_e_all[df_e_all['branch'] == branch_filter]
 
-    # إنشاء قائمة الاختيارات مع إمكانية الفلترة بالفرع
     branches = ["الكل"] + sorted(df_e_all['branch'].dropna().unique().tolist())
-    
-    st.markdown("<h4 style='color: #1e3a5f; margin-bottom: 15px;'>🔍 معايير الاستعلام</h4>", unsafe_allow_html=True)
-    col_br, col_emp, col1, col2 = st.columns([1, 1.5, 0.8, 0.8])
-    
-    sel_br_sum = col_br.selectbox("🏢 الفرع:", branches)
-    
+
+    # ── شريط الفلاتر (Streamlit widgets) ────────────────────────────────
+    st.markdown("""
+    <div style="background:#0d1117;border-radius:14px;padding:18px 20px 6px 20px;
+                border:1px solid rgba(255,255,255,0.07);margin-bottom:6px;direction:rtl;">
+      <span style="color:#e6edf3;font-size:15px;font-weight:900;">👤 ملخص الموظف</span>
+      <span style="color:#8b949e;font-size:12px;margin-right:10px;">— اختر الموظف والفترة الزمنية</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_br, col_emp, col1, col2 = st.columns([1, 1.8, 0.9, 0.9])
+    sel_br_sum = col_br.selectbox("🏢 الفرع", branches, label_visibility="collapsed")
+    col_br.caption("🏢 الفرع")
+
     df_e_sum = df_e_all.copy()
     if sel_br_sum != "الكل":
         df_e_sum = df_e_sum[df_e_sum['branch'] == sel_br_sum]
 
-    emp_options = {f"{e['name']} - #{e['device_id']}": str(e['device_id']) for _, e in df_e_sum.iterrows()}
-    
-    selected_option = col_emp.selectbox("👤 ابحث عن الموظف:", options=[""] + list(emp_options.keys()), 
-                                     placeholder="اختر موظفاً...")
-    
-    start_date = col1.date_input("📅 من:", value=datetime.date.today().replace(day=1))
-    end_date   = col2.date_input("📅 إلى:", value=datetime.date.today())
+    emp_options = {f"{e['name']} — #{e['device_id']}": str(e['device_id']) for _, e in df_e_sum.iterrows()}
+    selected_option = col_emp.selectbox("👤 الموظف", options=[""] + list(emp_options.keys()),
+                                        label_visibility="collapsed")
+    col_emp.caption("👤 اختر الموظف")
 
-    st.markdown("<hr style='border: 1px solid #e2e8f0; margin-top: 5px; margin-bottom: 25px;'>", unsafe_allow_html=True)
+    start_date = col1.date_input("من", value=datetime.date.today().replace(day=1))
+    end_date   = col2.date_input("إلى", value=datetime.date.today())
 
     if not selected_option:
-        st.info("👈 يرجى اختيار موظف من القائمة أعلاه لعرض السجل التفصيلي والتقارير.")
+        st.markdown("""
+        <div style="background:#161b22;border:1px solid rgba(255,255,255,0.07);border-radius:12px;
+                    padding:40px;text-align:center;color:#8b949e;margin-top:14px;direction:rtl;">
+            <div style="font-size:32px;margin-bottom:10px;">👤</div>
+            <div style="font-size:15px;font-weight:700;">اختر موظفاً من القائمة أعلاه لعرض ملخصه</div>
+        </div>
+        """, unsafe_allow_html=True)
         return
 
-    # استخراج كود الموظف من الاختيار
     emp_code = emp_options[selected_option]
- 
     filt = df_e_all[df_e_all['device_id'].astype(str) == emp_code]
     if filt.empty:
         st.error("بيانات الموظف غير متوفرة."); return
- 
+
     emp = filt.iloc[0].to_dict()
- 
-    # جلب السجلات في النطاق الزمني بتصفية الشركة
+
+    # ── جلب بيانات الحضور ────────────────────────────────────────────────
     user_c_id = st.session_state.user['company_id']
     res = supabase.table("attendance_logs").select("*") \
         .eq("device_id", emp['device_id']) \
@@ -753,99 +914,198 @@ def page_summary():
         .lte("timestamp", str(end_date) + "T23:59:59") \
         .execute()
     df_logs = pd.DataFrame(res.data)
- 
-    summary     = calc_attendance(df_logs, emp.get('branch',''))
-    # تصحيح الخطأ بتمرير emp['device_id']
+
+    summary     = calc_attendance(df_logs, emp.get('branch', ''))
     absent_days = detect_absent_days(summary, start_date, end_date, emp['device_id'])
-    
-    # استخراج بيانات الغياب والإجازات للعرض في الـ KPIs
     real_absent = [d for d in absent_days if d['type'] == 'Absent']
     leaves_days = [d for d in absent_days if d['type'] == 'Leave']
- 
-    # كارت الموظف
+
+    # ── حسابات KPI ───────────────────────────────────────────────────────
+    total_hrs     = summary['الساعات'].sum()    if not summary.empty else 0
+    total_extra   = summary['إضافي'].sum()      if not summary.empty else 0
+    total_deficit = summary['عجز'].sum()        if not summary.empty else 0
+    total_late    = summary[summary['حالة'] == 'متأخر'].shape[0] if not summary.empty else 0
+    complete_days = summary[summary['حالة'] == 'مكتمل'].shape[0] if not summary.empty else 0
+    late_mins     = int(summary['تأخير_دقائق'].sum()) if not summary.empty else 0
+
+    # ── حساب سنوات الخدمة ────────────────────────────────────────────────
+    hire_date_str = emp.get('hire_date') or emp.get('join_date') or ''
+    service_years = "—"
+    if hire_date_str:
+        try:
+            hd = datetime.date.fromisoformat(str(hire_date_str)[:10])
+            yrs = (datetime.date.today() - hd).days // 365
+            service_years = f"{yrs} سنة"
+        except Exception:
+            pass
+
+    # ── الأحرف الأولى للاسم (للأفاتار) ──────────────────────────────────
+    name_parts = emp.get('name', '').split()
+    initials = (name_parts[0][0] if name_parts else '') + (name_parts[1][0] if len(name_parts) > 1 else '')
+
+    # ── بناء شريط الحضور HTML ────────────────────────────────────────────
+    color_map = {
+        'مكتمل':      '#00d4aa',
+        'متأخر':      '#f59e0b',
+        'عجز':        '#ef4444',
+        'بصمة_واحدة': '#a855f7',
+    }
+    strip_html = ''
+    if not summary.empty:
+        all_dates = pd.date_range(start=start_date, end=end_date)
+        sum_dict  = dict(zip(summary['التاريخ'].astype(str), summary['حالة']))
+        leave_set = {str(d['date']) for d in absent_days if d['type'] == 'Leave'}
+        absent_set= {str(d['date']) for d in absent_days if d['type'] == 'Absent'}
+        for d in all_dates:
+            ds = str(d.date())
+            dw = d.weekday()
+            if dw >= 4:                          # جمعة وسبت = راحة
+                clr = '#21262d'
+                tip = 'إجازة أسبوعية'
+            elif ds in leave_set:
+                clr = '#0099ff'
+                tip = 'إجازة / مأمورية'
+            elif ds in absent_set:
+                clr = '#ef4444'
+                tip = 'غياب'
+            elif ds in sum_dict:
+                clr = color_map.get(sum_dict[ds], '#21262d')
+                tip = sum_dict[ds]
+            else:
+                clr = '#21262d'
+                tip = ds
+            strip_html += f'<span class="sum-day-dot" style="background:{clr}" title="{tip} — {ds}"></span>'
+
+    # ── رسم العرض الكامل ─────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);border:none;
-                border-radius:16px;padding:20px 24px;margin-bottom:20px;
-                display:flex;justify-content:space-between;align-items:center;
-                box-shadow:0 4px 166px rgba(37,99,235,0.25);">
-      <div>
-        <div style="color:white;font-size:22px;font-weight:900;">{emp.get('name','—')}</div>
-        <div style="color:#bfdbfe;font-size:13px;margin-top:5px;">
-          🏢 {emp.get('branch','—')} &nbsp;|&nbsp; 👤 {emp.get('role','موظف')}
+    <div class="sum-wrap">
+
+      <!-- ══ Employee Hero Card ══ -->
+      <div class="sum-emp-hero">
+        <div class="sum-emp-left">
+          <div class="sum-avatar">{initials}</div>
+          <div>
+            <div class="sum-emp-name">{emp.get('name','—')}</div>
+            <div class="sum-emp-meta">
+              🏢 {emp.get('branch','—')} &nbsp;|&nbsp; 👤 {emp.get('role','موظف')} &nbsp;|&nbsp; 🏗️ {emp.get('department', emp.get('dept','—'))}
+            </div>
+            <div class="sum-badge-row">
+              <span class="sum-badge sum-badge-green">نشط</span>
+              <span class="sum-badge sum-badge-blue">دوام كامل</span>
+            </div>
+          </div>
+        </div>
+        <div class="sum-emp-right">
+          <div class="sum-stat-box"><small>كود الموظف</small><span>#{emp.get('device_id','—')}</span></div>
+          <div class="sum-stat-box"><small>الفرع</small><span>{emp.get('branch','—')}</span></div>
+          <div class="sum-stat-box"><small>سنوات الخدمة</small><span>{service_years}</span></div>
         </div>
       </div>
-      <div style="background:white;color:#2563eb;padding:10px 20px;border-radius:12px;
-                  font-size:22px;font-weight:900;">#{emp.get('device_id','—')}</div>
+
+      <!-- ══ KPI Grid ══ -->
+      <div class="sum-kpi-grid">
+        <div class="sum-kpi"><div class="sum-kpi-val" style="color:#0099ff">{len(summary)}</div><div class="sum-kpi-lbl">أيام العمل</div></div>
+        <div class="sum-kpi"><div class="sum-kpi-val" style="color:#00d4aa">{complete_days}</div><div class="sum-kpi-lbl">أيام مكتملة</div></div>
+        <div class="sum-kpi"><div class="sum-kpi-val" style="color:#00d4aa">{round(total_hrs,1)}h</div><div class="sum-kpi-lbl">إجمالي الساعات</div></div>
+        <div class="sum-kpi"><div class="sum-kpi-val" style="color:#f59e0b">{total_late}</div><div class="sum-kpi-lbl">أيام تأخير</div></div>
+        <div class="sum-kpi"><div class="sum-kpi-val" style="color:#f59e0b">{late_mins}د</div><div class="sum-kpi-lbl">دقائق التأخير</div></div>
+        <div class="sum-kpi"><div class="sum-kpi-val" style="color:#ef4444">{len(real_absent)}</div><div class="sum-kpi-lbl">أيام غياب</div></div>
+      </div>
+
+      <!-- ══ Attendance Strip ══ -->
+      <div class="sum-strip-wrap">
+        <div class="sum-strip-title">سجل الحضور — {start_date.strftime('%Y/%m/%d')} إلى {end_date.strftime('%Y/%m/%d')}</div>
+        <div class="sum-strip-legend">
+          <div class="sum-sl-item"><div class="sum-sl-box" style="background:#00d4aa"></div>مكتمل</div>
+          <div class="sum-sl-item"><div class="sum-sl-box" style="background:#f59e0b"></div>متأخر</div>
+          <div class="sum-sl-item"><div class="sum-sl-box" style="background:#ef4444"></div>غياب</div>
+          <div class="sum-sl-item"><div class="sum-sl-box" style="background:#a855f7"></div>بصمة واحدة</div>
+          <div class="sum-sl-item"><div class="sum-sl-box" style="background:#0099ff"></div>إجازة</div>
+          <div class="sum-sl-item"><div class="sum-sl-box" style="background:#21262d;border:1px solid #30363d"></div>راحة/لا بيانات</div>
+        </div>
+        <div class="sum-strip">{strip_html}</div>
+      </div>
+
     </div>
     """, unsafe_allow_html=True)
- 
+
     if summary.empty and not absent_days:
         st.info("لا توجد سجلات في هذه الفترة.")
         return
- 
-    # KPIs
-    total_hrs     = summary['الساعات'].sum() if not summary.empty else 0
-    total_extra   = summary['إضافي'].sum() if not summary.empty else 0
-    total_deficit = summary['عجز'].sum() if not summary.empty else 0
-    total_late    = summary[summary['حالة']=='متأخر'].shape[0] if not summary.empty else 0
-    complete_days = summary[summary['حالة']=='مكتمل'].shape[0] if not summary.empty else 0
-    late_mins     = int(summary['تأخير_دقائق'].sum()) if not summary.empty else 0
- 
-    k = st.columns(6)
-    metrics = [
-        ("أيام العمل",     len(summary),        "#0099ff"),
-        ("أيام مكتملة",   complete_days,        "#00d4aa"),
-        ("إجمالي الساعات", f"{round(total_hrs,1)}h", "#00d4aa"),
-        ("أيام تأخير",    total_late,           "#f59e0b"),
-        ("دقائق التأخير", f"{late_mins}د",       "#f59e0b"),
-        ("أيام غياب",     len(real_absent),     "#ef4444"),
-    ]
-    for col, (label, val, color) in zip(k, metrics):
-        col.markdown(f"""
-        <div class="kpi-card">
-          <div class="kpi-value" style="color:{color}">{val}</div>
-          <div class="kpi-label">{label}</div>
-        </div>""", unsafe_allow_html=True)
- 
-    st.write("")
- 
-    # Tabs
+
+    # ══ Charts + Tabs ══════════════════════════════════════════════════════
     tab1, tab2, tab3, tab4 = st.tabs(["📊 الرسوم البيانية", "📋 السجل التفصيلي",
-                                        "🔴 الغياب", "📄 تصدير PDF"])
- 
+                                       "🔴 الغياب والإجازات", "📄 تصدير"])
+
     with tab1:
         if summary.empty:
             st.info("لا توجد بيانات رسومية لهذه الفترة.")
         elif has_plotly:
             col1, col2 = st.columns(2)
             with col1:
-                fig = px.bar(summary.sort_values('التاريخ'), x='التاريخ', y='الساعات',
-                             color='حالة', title="ساعات العمل اليومية",
-                             color_discrete_map={'مكتمل':'#00d4aa','متأخر':'#f59e0b',
-                                                 'عجز':'#ef4444','بصمة_واحدة':'#a855f7'})
-                fig.add_hline(y=8, line_dash="dash", line_color="#94a3b8", annotation_text="8h")
-                fig.update_layout(paper_bgcolor='white', plot_bgcolor='#f8fafc',
-                                  font_color='#1e293b')
+                fig = px.bar(
+                    summary.sort_values('التاريخ'), x='التاريخ', y='الساعات',
+                    color='حالة', title="ساعات العمل اليومية",
+                    color_discrete_map={
+                        'مكتمل': '#00d4aa', 'متأخر': '#f59e0b',
+                        'عجز': '#ef4444', 'بصمة_واحدة': '#a855f7'
+                    }
+                )
+                fig.add_hline(y=8, line_dash="dash", line_color="#8b949e", annotation_text="8h")
+                fig.update_layout(
+                    paper_bgcolor='#161b22', plot_bgcolor='#0d1117',
+                    font_color='#e6edf3', font_family='Cairo',
+                    title_font_color='#e6edf3',
+                    legend=dict(bgcolor='#1c2333', bordercolor='rgba(255,255,255,0.1)'),
+                    xaxis=dict(gridcolor='rgba(255,255,255,0.05)', tickfont_color='#8b949e'),
+                    yaxis=dict(gridcolor='rgba(255,255,255,0.05)', tickfont_color='#8b949e'),
+                )
                 st.plotly_chart(fig, use_container_width=True)
+
             with col2:
                 status_counts = summary['حالة'].value_counts().reset_index()
-                status_counts.columns = ['الحالة','العدد']
-                fig2 = px.pie(status_counts, values='العدد', names='الحالة',
-                              title="توزيع الحالات",
-                              color_discrete_sequence=['#00d4aa','#f59e0b','#ef4444','#a855f7'])
-                fig2.update_layout(paper_bgcolor='white', font_color='#1e293b')
+                status_counts.columns = ['الحالة', 'العدد']
+                fig2 = px.pie(
+                    status_counts, values='العدد', names='الحالة',
+                    title="توزيع الحالات",
+                    color_discrete_sequence=['#00d4aa', '#f59e0b', '#ef4444', '#a855f7']
+                )
+                fig2.update_layout(
+                    paper_bgcolor='#161b22', font_color='#e6edf3',
+                    font_family='Cairo', title_font_color='#e6edf3',
+                    legend=dict(bgcolor='#1c2333', bordercolor='rgba(255,255,255,0.1)'),
+                )
                 st.plotly_chart(fig2, use_container_width=True)
- 
-            # تأخير تراكمي
-            late_df = summary[summary['تأخير_دقائق'] > 0].sort_values('التاريخ')
-            if not late_df.empty:
-                fig3 = px.bar(late_df, x='التاريخ', y='تأخير_دقائق',
-                              title="دقائق التأخير اليومية",
-                              color_discrete_sequence=['#f59e0b'])
-                fig3.update_layout(paper_bgcolor='white', plot_bgcolor='#f8fafc',
-                                   font_color='#1e293b')
-                st.plotly_chart(fig3, use_container_width=True)
- 
+
+            # إضافي vs عجز
+            col3, col4 = st.columns(2)
+            with col3:
+                late_df = summary[summary['تأخير_دقائق'] > 0].sort_values('التاريخ')
+                if not late_df.empty:
+                    fig3 = px.bar(late_df, x='التاريخ', y='تأخير_دقائق',
+                                  title="دقائق التأخير اليومية",
+                                  color_discrete_sequence=['#f59e0b'])
+                    fig3.update_layout(
+                        paper_bgcolor='#161b22', plot_bgcolor='#0d1117',
+                        font_color='#e6edf3', font_family='Cairo',
+                        xaxis=dict(gridcolor='rgba(255,255,255,0.05)', tickfont_color='#8b949e'),
+                        yaxis=dict(gridcolor='rgba(255,255,255,0.05)', tickfont_color='#8b949e'),
+                    )
+                    st.plotly_chart(fig3, use_container_width=True)
+            with col4:
+                extra_df = summary[summary['إضافي'] > 0].sort_values('التاريخ')
+                if not extra_df.empty:
+                    fig4 = px.bar(extra_df, x='التاريخ', y='إضافي',
+                                  title="ساعات العمل الإضافي",
+                                  color_discrete_sequence=['#00d4aa'])
+                    fig4.update_layout(
+                        paper_bgcolor='#161b22', plot_bgcolor='#0d1117',
+                        font_color='#e6edf3', font_family='Cairo',
+                        xaxis=dict(gridcolor='rgba(255,255,255,0.05)', tickfont_color='#8b949e'),
+                        yaxis=dict(gridcolor='rgba(255,255,255,0.05)', tickfont_color='#8b949e'),
+                    )
+                    st.plotly_chart(fig4, use_container_width=True)
+
     with tab2:
         if summary.empty:
             st.info("لا توجد سجلات حضور.")
@@ -857,58 +1117,132 @@ def page_summary():
             disp['تأخير']  = disp['تأخير_دقائق'].apply(lambda x: f"{x} د" if x > 0 else "—")
             disp['فرع']    = disp.apply(
                 lambda x: f"🔀 {x['فرع_البصمة']}" if x['تقاطع_فروع'] else x['فرع_البصمة'], axis=1)
-    
-            st.dataframe(
-                disp[['التاريخ','حضور','انصراف','الساعات','إضافي','عجز','تأخير','حالة','فرع']],
-                use_container_width=True, hide_index=True)
- 
+
+            # بناء جدول HTML بنفس الـ dark style
+            rows_html = ""
+            status_colors = {
+                'مكتمل': '#00d4aa', 'متأخر': '#f59e0b',
+                'عجز': '#ef4444', 'بصمة_واحدة': '#a855f7'
+            }
+            for _, r in disp.iterrows():
+                sc = status_colors.get(r['حالة'], '#8b949e')
+                rows_html += f"""
+                <tr>
+                  <td>{r['التاريخ']}</td>
+                  <td>{r['حضور']}</td>
+                  <td>{r['انصراف']}</td>
+                  <td><b>{r['الساعات']}</b></td>
+                  <td style="color:#00d4aa">{r['إضافي'] if r['إضافي'] > 0 else '—'}</td>
+                  <td style="color:#ef4444">{r['عجز'] if r['عجز'] > 0 else '—'}</td>
+                  <td style="color:#f59e0b">{r['تأخير']}</td>
+                  <td><span style="color:{sc};font-weight:700">{r['حالة']}</span></td>
+                  <td>{r['فرع']}</td>
+                </tr>"""
+
+            st.markdown(f"""
+            <div style="background:#161b22;border:1px solid rgba(255,255,255,0.07);
+                        border-radius:12px;padding:16px;overflow-x:auto;direction:rtl;">
+              <table class="sum-detail-tbl">
+                <thead>
+                  <tr>
+                    <th>التاريخ</th><th>حضور</th><th>انصراف</th>
+                    <th>الساعات</th><th>إضافي</th><th>عجز</th>
+                    <th>تأخير</th><th>الحالة</th><th>الفرع</th>
+                  </tr>
+                </thead>
+                <tbody>{rows_html}</tbody>
+              </table>
+            </div>
+            """, unsafe_allow_html=True)
+
     with tab3:
         if absent_days:
-            # عرض أيام الغياب الفعلي
-            if real_absent:
-                st.error(f"🔴 أيام الغياب الفعلي: **{len(real_absent)} يوم**")
-            
-            # عرض الإجازات والمأموريات
-            if leaves_days:
-                st.info(f"🛳️ أيام الإجازات والمأموريات المعتمدة: **{len(leaves_days)} يوم**")
-
             absent_df = pd.DataFrame(absent_days)
             absent_df['اليوم'] = pd.to_datetime(absent_df['date']).dt.strftime('%A')
-            day_ar = {'Monday':'الاثنين','Tuesday':'الثلاثاء','Wednesday':'الأربعاء',
-                      'Thursday':'الخميس','Friday':'الجمعة'}
+            day_ar = {'Monday': 'الاثنين', 'Tuesday': 'الثلاثاء', 'Wednesday': 'الأربعاء',
+                      'Thursday': 'الخميس', 'Friday': 'الجمعة', 'Saturday': 'السبت', 'Sunday': 'الأحد'}
             absent_df['اليوم'] = absent_df['اليوم'].map(day_ar).fillna(absent_df['اليوم'])
-            
-            st.dataframe(
-                absent_df.rename(columns={'date':'التاريخ', 'reason':'الحالة / السبب'}).drop(columns=['type']),
-                use_container_width=True, hide_index=True)
+
+            rows_ab = ""
+            for _, r in absent_df.iterrows():
+                clr = '#ef4444' if r['type'] == 'Absent' else '#0099ff'
+                label = 'غياب' if r['type'] == 'Absent' else 'إجازة / مأمورية'
+                rows_ab += f"""
+                <tr>
+                  <td>{r['date']}</td>
+                  <td>{r['اليوم']}</td>
+                  <td><span style="color:{clr};font-weight:700">{label}</span></td>
+                  <td>{r['reason']}</td>
+                </tr>"""
+
+            st.markdown(f"""
+            <div style="display:flex;gap:12px;margin-bottom:14px;direction:rtl;flex-wrap:wrap;">
+              <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);
+                          border-radius:10px;padding:12px 20px;text-align:center;min-width:120px;">
+                <div style="color:#ef4444;font-size:22px;font-weight:900">{len(real_absent)}</div>
+                <div style="color:#8b949e;font-size:11px;font-weight:700">أيام غياب فعلي</div>
+              </div>
+              <div style="background:rgba(0,153,255,0.12);border:1px solid rgba(0,153,255,0.3);
+                          border-radius:10px;padding:12px 20px;text-align:center;min-width:120px;">
+                <div style="color:#0099ff;font-size:22px;font-weight:900">{len(leaves_days)}</div>
+                <div style="color:#8b949e;font-size:11px;font-weight:700">إجازات / مأموريات</div>
+              </div>
+            </div>
+            <div style="background:#161b22;border:1px solid rgba(255,255,255,0.07);
+                        border-radius:12px;padding:16px;overflow-x:auto;direction:rtl;">
+              <table class="sum-detail-tbl">
+                <thead>
+                  <tr><th>التاريخ</th><th>اليوم</th><th>النوع</th><th>السبب / التفاصيل</th></tr>
+                </thead>
+                <tbody>{rows_ab}</tbody>
+              </table>
+            </div>
+            """, unsafe_allow_html=True)
         else:
             st.success("✅ لا توجد أيام غياب أو إجازات في هذه الفترة!")
- 
+
     with tab4:
-        st.write("### 📄 تصدير تقرير احترافي PDF")
-        report_type = st.selectbox("نوع التقرير", ["شهري","أسبوعي","مخصص"])
-        if st.button("🖨️ توليد PDF الآن", type="primary"):
-            with st.spinner("جاري إنشاء التقرير..."):
-                pdf_bytes = generate_pdf(emp, summary, absent_days, report_type)
-            fname = f"تقرير_{emp.get('name','موظف')}_{start_date}_{end_date}.pdf"
-            st.download_button("📥 تحميل التقرير", pdf_bytes, fname, mime="application/pdf")
-            st.success("✅ التقرير جاهز للتحميل!")
- 
-        # تقرير Excel
-        if not summary.empty:
-            buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='xlsxwriter') as w:
-                ex = summary.copy()
-                ex['حضور']    = ex['حضور'].dt.tz_localize(None)
-                ex['انصراف'] = ex['انصراف'].apply(
-                    lambda x: x.tz_localize(None) if x is not None else None)
-                ex.to_excel(w, index=False, sheet_name='الحضور')
-                if absent_days:
-                    pd.DataFrame([{'التاريخ': d['date'], 'الحالة': d['reason']} for d in absent_days]).to_excel(
-                        w, index=False, sheet_name='الغياب')
-            st.download_button("📊 تحميل Excel", buf.getvalue(), f"سجل_{emp['name']}.xlsx")
-        else:
-            st.info("لا توجد بيانات حضور لتصديرها كـ Excel في هذه الفترة.")
+        col_ex1, col_ex2 = st.columns(2)
+        with col_ex1:
+            st.markdown("""
+            <div style="background:#161b22;border:1px solid rgba(255,255,255,0.07);
+                        border-radius:12px;padding:20px;direction:rtl;">
+              <div style="color:#e6edf3;font-size:14px;font-weight:900;margin-bottom:14px">📄 تقرير PDF احترافي</div>
+            </div>
+            """, unsafe_allow_html=True)
+            report_type = st.selectbox("نوع التقرير", ["شهري", "أسبوعي", "مخصص"])
+            if st.button("🖨️ توليد PDF الآن", type="primary", use_container_width=True):
+                with st.spinner("جاري إنشاء التقرير..."):
+                    pdf_bytes = generate_pdf(emp, summary, absent_days, report_type)
+                fname = f"تقرير_{emp.get('name','موظف')}_{start_date}_{end_date}.pdf"
+                st.download_button("📥 تحميل التقرير", pdf_bytes, fname,
+                                   mime="application/pdf", use_container_width=True)
+                st.success("✅ التقرير جاهز!")
+
+        with col_ex2:
+            st.markdown("""
+            <div style="background:#161b22;border:1px solid rgba(255,255,255,0.07);
+                        border-radius:12px;padding:20px;direction:rtl;">
+              <div style="color:#e6edf3;font-size:14px;font-weight:900;margin-bottom:14px">📊 تصدير Excel</div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.write("")
+            if not summary.empty:
+                buf = io.BytesIO()
+                with pd.ExcelWriter(buf, engine='xlsxwriter') as w:
+                    ex = summary.copy()
+                    ex['حضور']    = ex['حضور'].dt.tz_localize(None)
+                    ex['انصراف'] = ex['انصراف'].apply(
+                        lambda x: x.tz_localize(None) if x is not None else None)
+                    ex.to_excel(w, index=False, sheet_name='الحضور')
+                    if absent_days:
+                        pd.DataFrame([{'التاريخ': d['date'], 'الحالة': d['reason']}
+                                       for d in absent_days]).to_excel(
+                            w, index=False, sheet_name='الغياب')
+                st.download_button("📊 تحميل Excel", buf.getvalue(),
+                                   f"سجل_{emp['name']}.xlsx", use_container_width=True)
+            else:
+                st.info("لا توجد بيانات حضور لتصديرها.")
  
 # ══════════════════════════════════════════
 # صفحة: تقارير الفروع الذكية
